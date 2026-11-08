@@ -3,19 +3,23 @@
 //! `cargo run -p todo -- --snap todo.png`.
 
 use rune::tok::{self, Theme, radius, type_};
-use rune::{AppSpec, Cx, El, ScrollSpec, Spring, col, el, row, text};
-use rune_kit::{Badge, BadgeVariant, Divider, Kit};
+use rune::{AppSpec, Cx, El, ScrollSpec, Spring, TextEdit, col, el, row, text};
+use rune_kit::{Badge, BadgeVariant, Divider, Kit, TextInput};
 
 struct Todo { id: u32, title: String, done: bool }
 
-struct State { todos: Vec<Todo>, next: u32 }
+struct State {
+    todos: Vec<Todo>,
+    next: u32,
+    input: TextEdit,
+}
 
 impl Default for State {
     fn default() -> Self {
         let titles = ["Write the view", "Run it headless", "Ship it"];
         let todos = titles.iter().zip(0..)
             .map(|(title, id)| Todo { id, title: title.to_string(), done: id == 0 });
-        State { todos: todos.collect(), next: 3 }
+        State { todos: todos.collect(), next: 3, input: TextEdit::default() }
     }
 }
 
@@ -45,11 +49,6 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
                 .child(check).child(title).child(status).child(remove),
         );
     }
-    let add = text("Add a todo").key("add").font(type_::LABEL).color(tok::accent(0, true))
-        .on_press(|s: &mut State| {
-            s.todos.push(Todo { id: s.next, title: format!("Todo {}", s.next + 1), done: false });
-            s.next += 1;
-        });
     let done = s.todos.iter().filter(|t| t.done).count();
     let total = s.todos.len();
 
@@ -65,12 +64,31 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
         )
         .child(text(format!("{done} of {total} done")).font(type_::LABEL).color(t.text_secondary));
 
-    let mut footer = row().w_full().between().center_y().child(add);
+    let input_field = TextInput::new(&s.input)
+        .placeholder("What needs to be done?")
+        .on_edit(|s: &mut State| &mut s.input)
+        .key("todo-input")
+        .width(None)
+        .build(&kit);
+
+    let add_btn = text("+ Add").key("add").font(type_::LABEL).color(tok::accent(0, true))
+        .on_press(|s: &mut State| {
+            let val = s.input.text.trim().to_string();
+            if !val.is_empty() {
+                s.todos.push(Todo { id: s.next, title: val, done: false });
+                s.next += 1;
+                s.input.text.clear();
+            }
+        });
+
+    let mut actions = row().w_full().between().center_y().child(add_btn);
     if done > 0 {
         let clear = text("Clear completed").key("clear").font(type_::LABEL).color(t.text_secondary)
             .on_press(|s: &mut State| s.todos.retain(|t| !t.done));
-        footer = footer.child(clear);
+        actions = actions.child(clear);
     }
+
+    let footer = col().w_full().gap(8.0).child(input_field).child(actions);
 
     if s.todos.is_empty() {
         list = list.child(
@@ -97,5 +115,5 @@ fn progress(done: usize, total: usize, t: Theme) -> El {
 }
 
 fn main() {
-    rune::run(AppSpec::new("Todo", (380.0, 260.0), State::default, view));
+    rune::run(AppSpec::new("Todo", (380.0, 310.0), State::default, view));
 }
