@@ -1173,7 +1173,9 @@ with `Runtime::window_focus(bool)`.
 `[f32; 4]`, `Color`). Call `set(value)` from a producer thread; Rune coalesces a
 wake for each visible subscribed window. Equal values and hidden windows do not
 wake. Bind with `.live_opacity(&level)`, `.live_offset(&cursor)`,
-`.live_scale(&scale)`, `.live_fill(&color)` or `.live_rect(&rect)`.
+`.live_scale(&scale)`, `.live_fill(&color)` or `.live_rect(&rect)`, and colours with
+`.live_text_color`, `.live_border`, `.live_shadow` (the first shadow's colour) and
+`.live_gradient(&top, &bottom)`. A rebuild keeps what a colour binding last set.
 `cursor.smooth(Spring::new(0.16, 0.0))` opts a binding into rune-motion smoothing.
 Views and layout do not rerun. Rects are presentation `[x,y,w,h]` in parent points,
 so text does not rewrap and siblings do not reflow. See
@@ -1575,7 +1577,9 @@ Once the system drag starts, Rune drops the pointer capture and hover, so nothin
 Files are offered as copies (`DragItem::allow_move` also offers a move), an app bundle can be
 dropped into System Settings' privacy lists, and the picture under the pointer is a snapshot of
 the element unless `DragItem::image` sets one. `on_drag_end` receives `DragOutcome::Copied`,
-`Moved`, `Linked` or `Cancelled`.
+`Moved`, `Linked` or `Cancelled`. The app's own windows take no drop from its drags unless
+`DragItem::within_app` offers it to them: their `on_drop_files` targets then receive the files
+as they would from Finder (an image dragged from a list into a composer).
 
 macOS only for now. Elsewhere `drag_out` is ignored and the element keeps its press and
 `on_drag` behaviour. Headless runs record `drag-out <path>` in `--trace` and mark the node
