@@ -6,7 +6,9 @@
 //! `-- --snap diff-unified-dark.png --size 900x620 --theme dark` and the same with
 //! `--scene split` and `--theme light`. `diff-unified-scrolled.png` is
 //! `-- --scene scrolled --script crates/rune-kit/examples/diff_scrolled.json --snap diff-unified-scrolled.png --at mark:end --size 900x620 --theme dark`:
-//! long lines scrolled sideways, with the line numbers held at the left edge.
+//! long lines scrolled sideways, with the line numbers held at the left edge. `--scene added`
+//! splits an added and a deleted file, each one column across the whole width. `--scene folded`
+//! folds a full-context patch with `FileDiff::fold`, four unchanged lines around its change.
 use rune::{App, AppSpec, Cx, El, KeyEvent, Tx, col, row, text};
 use rune_kit::diff::{Annotation, DiffMode, DiffState, DiffView, FileDiff, LineRange, LineRef, Side, parse};
 use rune_kit::{Button, ButtonVariant, Kit, SegmentedControl};
@@ -191,6 +193,12 @@ pub fn clamp(&self, wait: Duration) -> Duration {
 }
 ";
 
+const ADDED_MD: &str = "# Retry backoff
+
+Waits double from `base_ms` up to `max_ms`, then spread by `jitter`.
+";
+const DELETED_TOML: &str = "[retry]\nlegacy = true\ndelay_ms = 250\n";
+
 struct Review {
     diff: DiffState,
     composing: Option<LineRange>,
@@ -280,6 +288,18 @@ fn main() {
             ("split", |s: &mut Review| s.diff.set_mode(DiffMode::Split)),
             ("scrolled", |s: &mut Review| {
                 s.diff = DiffState::new(vec![FileDiff::from_texts("src/net/backoff.rs", LONG_OLD, LONG_NEW)])
+            }),
+            ("folded", |s: &mut Review| {
+                let full: String = (1..=40).map(|n| if n == 8 { "-    attempts: 3,\n+    attempts: 5,\n".to_owned() } else { format!("     line {n}\n") }).collect();
+                let patch = format!("--- a/config/retry.rs\t\n+++ b/config/retry.rs\t\n@@ -1,40 +1,40 @@\n{full}");
+                s.diff = DiffState::new(parse(&patch).into_iter().map(|f| f.fold(4)).collect());
+            }),
+            ("added", |s: &mut Review| {
+                s.diff = DiffState::new(vec![
+                    FileDiff::between(None, Some("docs/retry.md".into()), "", ADDED_MD),
+                    FileDiff::between(Some("config/legacy.toml".into()), None, DELETED_TOML, ""),
+                ]);
+                s.diff.set_mode(DiffMode::Split);
             }),
         ],
         on_key: Some(on_key),
