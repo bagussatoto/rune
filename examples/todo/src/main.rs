@@ -44,11 +44,32 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
             s.next += 1;
         });
     let done = s.todos.iter().filter(|t| t.done).count();
+    let total = s.todos.len();
+
+    let header = row().w_full().between().center_y()
+        .child(text("Tasks").font(type_::TITLE).color(t.text))
+        .child(text(format!("{done} of {total} done")).font(type_::LABEL).color(t.text_secondary));
+
+    let mut footer = row().w_full().between().center_y().child(add);
+    if done > 0 {
+        let clear = text("Clear completed").key("clear").font(type_::LABEL).color(t.text_secondary)
+            .on_press(|s: &mut State| s.todos.retain(|t| !t.done));
+        footer = footer.child(clear);
+    }
+
+    if s.todos.is_empty() {
+        list = list.child(
+            row().key("empty").h(36.0).px(12.0).center_y().radius(radius::SM).fill(t.card)
+                .child(text("All caught up! 🎉").font(type_::BODY).color(t.text_secondary)),
+        );
+    }
+
     col().w_full().h_full().padding(24.0).gap(12.0).fill(t.bg)
-        .child(progress(done, s.todos.len(), t))
-        // Past what the window holds, the list scrolls, following new rows, and "Add" stays.
+        .child(header)
+        .child(progress(done, total, t))
+        // Past what the window holds, the list scrolls, following new rows, and footer stays.
         .child(list.scroll(ScrollSpec { stick_bottom: true }).shrink().min_h(0.0))
-        .child(add)
+        .child(footer)
 }
 
 fn progress(done: usize, total: usize, t: Theme) -> El {
