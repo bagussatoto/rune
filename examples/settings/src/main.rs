@@ -19,6 +19,8 @@ struct Settings {
     launch_at_login: bool,
     menu_bar: bool,
     sounds: bool,
+    notifications: bool,
+    sound_alerts: bool,
     /// Slider position 0..1; animation speed is 2^(2v − 1), so the middle is 1×.
     speed: f32,
     reduce_motion: bool,
@@ -32,6 +34,8 @@ impl Default for Settings {
             launch_at_login: true,
             menu_bar: true,
             sounds: false,
+            notifications: true,
+            sound_alerts: true,
             speed: 0.5,
             reduce_motion: false,
         }
@@ -44,7 +48,7 @@ fn speed_of(v: f32) -> f32 {
 
 #[test]
 fn cancelling_the_speed_slider_restores_its_value_before_a_track_press() {
-    let mut rt = rune::Runtime::new(Settings::default(), view, (620.0, 520.0), rune::Env::new(true, 1.0));
+    let mut rt = rune::Runtime::new(Settings::default(), view, (620.0, 600.0), rune::Env::new(true, 1.0));
     rt.frame(0.0);
     let (x, y) = rt.find("slider").unwrap();
     rt.pointer_down(x + 60.0, y);
@@ -118,6 +122,19 @@ fn view(s: &Settings, cx: &mut Cx<Settings>) -> El {
                         }),
                         toggle_row(p, "menubar", "Show in menu bar", s.menu_bar, |s| s.menu_bar = !s.menu_bar),
                         toggle_row(p, "sounds", "Play sounds", s.sounds, |s| s.sounds = !s.sounds),
+                    ],
+                ))
+                .child(section(
+                    p,
+                    "notifications",
+                    "Notifications",
+                    [
+                        toggle_row(p, "notif", "Allow notifications", s.notifications, |s| {
+                            s.notifications = !s.notifications
+                        }),
+                        toggle_row(p, "alerts", "Play alert sounds", s.sound_alerts, |s| {
+                            s.sound_alerts = !s.sound_alerts
+                        }),
                     ],
                 ))
                 .child(section(
@@ -370,6 +387,6 @@ fn main() {
             ("accent-pink", |s| s.accent = 2),
             ("slow", |s| s.speed = 0.0),
         ],
-        ..AppSpec::new("Settings", (620.0, 520.0), Settings::default, view)
+        ..AppSpec::new("Settings", (620.0, 600.0), Settings::default, view)
     });
 }
