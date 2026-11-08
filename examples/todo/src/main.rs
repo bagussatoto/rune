@@ -4,6 +4,7 @@
 
 use rune::tok::{self, Theme, radius, type_};
 use rune::{AppSpec, Cx, El, ScrollSpec, Spring, col, el, row, text};
+use rune_kit::{Badge, BadgeVariant, Divider, Kit};
 
 struct Todo { id: u32, title: String, done: bool }
 
@@ -20,6 +21,7 @@ impl Default for State {
 
 fn view(s: &State, _: &mut Cx<State>) -> El {
     let t = tok::theme(true);
+    let kit = Kit::neutral(true);
     let mut list = col().key("list").gap(4.0);
     for todo in &s.todos {
         let id = todo.id;
@@ -30,12 +32,17 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
             });
         let title = text(todo.title.clone()).font(type_::BODY).grow(1.0)
             .color(if todo.done { t.text_secondary } else { t.text });
+        let status = if todo.done {
+            Badge::new("Done").variant(BadgeVariant::Accent).build(&kit)
+        } else {
+            Badge::new("Pending").variant(BadgeVariant::Subtle).build(&kit)
+        };
         let remove = text("Remove").font(type_::LABEL).color(t.text_secondary)
             .on_press(move |s: &mut State| s.todos.retain(|t| t.id != id));
         list = list.child(
             row().key(format!("todo-{id}")).h(36.0).px(12.0).gap(12.0).center_y()
                 .radius(radius::SM).fill(t.card)
-                .child(check).child(title).child(remove),
+                .child(check).child(title).child(status).child(remove),
         );
     }
     let add = text("Add a todo").key("add").font(type_::LABEL).color(tok::accent(0, true))
@@ -47,7 +54,15 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
     let total = s.todos.len();
 
     let header = row().w_full().between().center_y()
-        .child(text("Tasks").font(type_::TITLE).color(t.text))
+        .child(
+            row().gap(8.0).center_y()
+                .child(text("Tasks").font(type_::TITLE).color(t.text))
+                .child(
+                    Badge::new(format!("{done}/{total}"))
+                        .variant(if done == total && total > 0 { BadgeVariant::Accent } else { BadgeVariant::Neutral })
+                        .build(&kit)
+                )
+        )
         .child(text(format!("{done} of {total} done")).font(type_::LABEL).color(t.text_secondary));
 
     let mut footer = row().w_full().between().center_y().child(add);
@@ -67,6 +82,7 @@ fn view(s: &State, _: &mut Cx<State>) -> El {
     col().w_full().h_full().padding(24.0).gap(12.0).fill(t.bg)
         .child(header)
         .child(progress(done, total, t))
+        .child(Divider::horizontal().build(&kit))
         // Past what the window holds, the list scrolls, following new rows, and footer stays.
         .child(list.scroll(ScrollSpec { stick_bottom: true }).shrink().min_h(0.0))
         .child(footer)
@@ -81,5 +97,5 @@ fn progress(done: usize, total: usize, t: Theme) -> El {
 }
 
 fn main() {
-    rune::run(AppSpec::new("Todo", (360.0, 240.0), State::default, view));
+    rune::run(AppSpec::new("Todo", (380.0, 260.0), State::default, view));
 }
